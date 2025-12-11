@@ -1,0 +1,309 @@
+<!DOCTYPE html> 
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banner Horizontal — Resultados</title>
+
+<style>
+:root { color-scheme: light; }
+body { margin:0; font-family: Arial, Roboto, sans-serif; background:#fff; }
+
+.banner-wrap { 
+  width:100%; 
+  max-width:1200px; 
+  margin:auto; 
+  background:#f9f9f9; 
+  border:1px solid #ddd; 
+  border-radius:10px; 
+  padding-top:10px;
+}
+
+/* LAYOUT PRINCIPAL */
+.row-container { 
+  display:flex; 
+  flex-wrap:nowrap; 
+  align-items:stretch;
+  padding:10px 16px; 
+  gap:16px;
+}
+
+/* TARJETAS DE CANDIDATOS */
+.row-card { 
+  flex:0 0 190px; 
+  background:#fff; 
+  border:1px solid #eee; 
+  border-radius:10px; 
+  padding:10px; 
+  text-align:center; 
+  box-shadow:0 1px 3px rgba(0,0,0,0.05);
+  transition:0.3s ease;
+}
+
+.row-card.winner {
+  background:#EAFEED;
+  border-color:#4CAF50;
+  box-shadow:0 0 12px rgba(76,175,80,0.4);
+  transform:scale(1.02);
+}
+
+.center-column {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:8px;
+}
+
+/* BARRA COMPARTIDA */
+.bar-rail { 
+  width:100%; 
+  height:12px; 
+  background:#eee; 
+  border-radius:6px; 
+  overflow:hidden;
+  display:flex;
+}
+
+.bar-fill-left,
+.bar-fill-right {
+  height:12px;
+  transition:width 0.9s ease;
+}
+
+.bar-fill-left { border-radius:6px 0 0 6px; }
+.bar-fill-right { border-radius:0 6px 6px 0; }
+
+.shared-percents {
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  font-weight:700;
+  color:#222;
+}
+
+.shared-label {
+  font-size:12px;
+  color:#555;
+  text-align:center;
+}
+
+.photo { 
+  width:60px; height:60px; 
+  border-radius:50%; 
+  object-fit:cover; 
+  border:1px solid #ddd; 
+  margin-bottom:6px; 
+}
+
+.name { font-weight:600; font-size:14px; color:#111; }
+
+.party { 
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  background:#6b7280; 
+  color:#fff; 
+  border-radius:4px; 
+  padding:2px 6px; 
+  font-size:12px; 
+  font-weight:600; 
+  margin:4px 0;
+}
+
+.percent { font-size:13px; font-weight:700; }
+.votes { font-size:12px; color:#444; margin-top:2px; }
+
+.winner-label {
+  color:#0A7D12;
+  font-weight:700;
+  font-size:13px;
+}
+
+.refresh { 
+  background:#005CA9; 
+  color:#fff; 
+  border:none; 
+  border-radius:6px; 
+  padding:5px 10px; 
+  font-size:12px; 
+  font-weight:600; 
+  cursor:pointer; 
+}
+.refresh:hover { background:#004B8A; }
+
+/* RESPONSIVE */
+@media (max-width:700px){
+  .row-container { flex-direction:column; align-items:stretch; }
+  .row-card { width:100%; max-width:260px; margin:0 auto; }
+}
+</style>
+</head>
+
+<body>
+<div class="banner-wrap">
+
+  <div id="rowContainer" class="row-container"></div>
+
+</div>
+
+<script>
+const DATA_URL="https://docs.google.com/spreadsheets/d/1e1hdX19TAZIiOnTfPgcCmfOh0HujEHWNEYn5WBiAFz8/export?format=csv";
+const REFRESH_MS=60000;
+
+function normalizeName(str){
+  return (str || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .trim();
+}
+
+function colorForRow(r){
+  const n = normalizeName(r.candidate);
+  if (n.includes("kast")) return "#005CA9";
+  if (n.includes("jara")) return "#C0392B";
+  return "#6b7280";
+}
+
+function formatInt(n){ return (n??0).toLocaleString("es-CL"); }
+
+function parseVotes(x){
+  if (x==null) return 0;
+  return Number(String(x).replace(/[^\d]/g,"") || 0);
+}
+
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  const headers=lines.shift().split(",").map(h=>h.trim());
+  return lines.map(line=>{
+    const cols=line.split(",").map(c=>c.trim());
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=cols[i]||"");
+    obj.votes=parseVotes(obj.votes);
+    obj.percent=obj.percent?Number(String(obj.percent).replace(",", ".")):0;
+    return obj;
+  });
+}
+
+async function fetchCSV(url){
+  const res=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});
+  return await res.text();
+}
+
+function render(rows){
+  const cont=document.getElementById("rowContainer");
+  cont.innerHTML="";
+
+  let jara=null, kast=null;
+
+  rows.forEach(r=>{
+    const n = normalizeName(r.candidate);
+    if (n.includes("jara")) jara = r;
+    if (n.includes("kast")) kast = r;
+  });
+
+  if (!jara && !kast){
+    cont.innerHTML = "<div>No hay datos de Jara ni Kast.</div>";
+    return;
+  }
+
+  const pJ = jara ? (jara.percent || 0) : 0;
+  const pK = kast ? (kast.percent || 0) : 0;
+  const total = pJ + pK;
+
+  let sharedJ = 0, sharedK = 0;
+  if (total > 0){
+    sharedJ = pJ / total * 100;
+    sharedK = pK / total * 100;
+  }
+
+  let ganador = null;
+  if (jara && kast){
+    ganador = pJ > pK ? jara.candidate : pK > pJ ? kast.candidate : null;
+  }
+
+  const jColor = jara ? colorForRow(jara) : "#C0392B";
+  const kColor = kast ? colorForRow(kast) : "#005CA9";
+
+  const jPhoto = jara?.photo ? `<img src="${jara.photo}" class="photo">` : "";
+  const kPhoto = kast?.photo ? `<img src="${kast.photo}" class="photo">` : "";
+
+  cont.innerHTML = `
+    ${jara ? `
+      <div class="row-card ${ganador === jara.candidate ? "winner" : ""}">
+        ${jPhoto}
+        <div class="name">
+          ${jara.candidate}
+          ${ganador === jara.candidate ? '<br><span class="winner-label">Lidera Conteo</span>' : ''}
+        </div>
+        <div class="party" style="background:${jColor};">
+          ${jara.party || "O"}
+        </div>
+        <div class="percent">${jara.percent.toFixed(1)}%</div>
+        <div class="votes">${formatInt(jara.votes)} votos</div>
+      </div>
+    ` : ""}
+
+    <div class="center-column">
+      <div class="bar-rail">
+        <div class="bar-fill-left" style="width:${sharedJ}%; background:${jColor};"></div>
+        <div class="bar-fill-right" style="width:${sharedK}%; background:${kColor};"></div>
+      </div>
+
+      <div class="shared-percents">
+        <span>${jara ? `${jara.candidate}: ${sharedJ.toFixed(1)}%` : ""}</span>
+        <span>${kast ? `${sharedK.toFixed(1)}% : ${kast.candidate}` : ""}</span>
+      </div>
+
+      <div class="shared-label">
+        Porcentajes calculados sobre el total de votos válidamente emitidos, excluidos votos nulos y votos en blanco.
+      </div>
+
+      <!-- 🔥 FOOTNOTE + BOTÓN AQUÍ -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:12px;">
+        <div id="footnote">Actualiza cada 60 s · Fuente: Servel</div>
+        <button id="refreshBtn" class="refresh">🔄 Actualizar</button>
+      </div>
+    </div>
+
+    ${kast ? `
+      <div class="row-card ${ganador === kast.candidate ? "winner" : ""}">
+        ${kPhoto}
+        <div class="name">
+          ${kast.candidate}
+          ${ganador === kast.candidate ? '<br><span class="winner-label">Lidera Conteo</span>' : ''}
+        </div>
+        <div class="party" style="background:${kColor};">
+          ${kast.party || "O"}
+        </div>
+        <div class="percent">${kast.percent.toFixed(1)}%</div>
+        <div class="votes">${formatInt(kast.votes)} votos</div>
+      </div>
+    ` : ""}
+  `;
+}
+
+async function load(){
+  try{
+    const text=await fetchCSV(DATA_URL);
+    const rows=parseCSV(text);
+    render(rows);
+  }catch(e){
+    console.error(e);
+  }
+}
+
+document.addEventListener("click", e => {
+  if (e.target.id === "refreshBtn") {
+    const btn = e.target;
+    btn.textContent = "⏳ Actualizando...";
+    load().then(() => btn.textContent = "🔄 Actualizar");
+  }
+});
+
+load();
+setInterval(load,REFRESH_MS);
+</script>
+
+</body>
+</html>
