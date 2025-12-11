@@ -11,7 +11,7 @@ body { margin:0; font-family: Arial, Roboto, sans-serif; background:#fff; }
 
 .banner-wrap { 
   width:100%; 
-  max-width:1180px; 
+  max-width:1200px; 
   margin:auto; 
   background:#f9f9f9; 
   border:1px solid #ddd; 
@@ -132,7 +132,6 @@ body { margin:0; font-family: Arial, Roboto, sans-serif; background:#fff; }
 }
 .refresh:hover { background:#004B8A; }
 
-/* RESPONSIVE */
 @media (max-width:700px){
   .row-container { flex-direction:column; align-items:stretch; }
   .row-card { width:100%; max-width:260px; margin:0 auto; }
@@ -175,12 +174,18 @@ function parseVotes(x){
 function parseCSV(text){
   const lines=text.trim().split(/\r?\n/);
   const headers=lines.shift().split(",").map(h=>h.trim());
+
   return lines.map(line=>{
     const cols=line.split(",").map(c=>c.trim());
     const obj={};
+
     headers.forEach((h,i)=>obj[h]=cols[i]||"");
-    obj.votes=parseVotes(obj.votes);
-    obj.percent=obj.percent?Number(String(obj.percent).replace(",", ".")):0;
+
+    obj.votes = parseVotes(obj.votes);
+
+    /* ✅ Arreglo contra NaN */
+    obj.percent = Number(String(obj.percent).replace(",", ".")) || 0;
+
     return obj;
   });
 }
@@ -207,15 +212,12 @@ function render(rows){
     return;
   }
 
-  const pJ = jara ? (jara.percent || 0) : 0;
-  const pK = kast ? (kast.percent || 0) : 0;
+  const pJ = jara ? jara.percent : 0;
+  const pK = kast ? kast.percent : 0;
   const total = pJ + pK;
 
-  let sharedJ = 0, sharedK = 0;
-  if (total > 0){
-    sharedJ = pJ / total * 100;
-    sharedK = pK / total * 100;
-  }
+  let sharedJ = total > 0 ? (pJ / total * 100) : 0;
+  let sharedK = total > 0 ? (pK / total * 100) : 0;
 
   let ganador = null;
   if (jara && kast){
@@ -239,7 +241,9 @@ function render(rows){
         <div class="party" style="background:${jColor};">
           ${jara.party || "O"}
         </div>
-        <div class="percent">${jara.percent.toFixed(1)}%</div>
+
+        <!-- ✅ FIX: NaN → 0 -->
+        <div class="percent">${(pJ || 0).toFixed(1)}%</div>
         <div class="votes">${formatInt(jara.votes)} votos</div>
       </div>
     ` : ""}
@@ -259,7 +263,6 @@ function render(rows){
         Porcentajes calculados sobre el total de votos válidamente emitidos, excluidos votos nulos y votos en blanco.
       </div>
 
-      <!-- 🔥 FOOTNOTE + BOTÓN AQUÍ -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:12px;">
         <div id="footnote">Actualiza cada 60 s · Fuente: Servel</div>
         <button id="refreshBtn" class="refresh">🔄 Actualizar</button>
@@ -276,7 +279,10 @@ function render(rows){
         <div class="party" style="background:${kColor};">
           ${kast.party || "O"}
         </div>
-        <div class="percent">${kast.percent.toFixed(1)}%</div>
+
+        <!-- ✅ FIX: NaN → 0 -->
+        <div class="percent">${(pK || 0).toFixed(1)}%</div>
+
         <div class="votes">${formatInt(kast.votes)} votos</div>
       </div>
     ` : ""}
