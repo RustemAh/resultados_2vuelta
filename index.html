@@ -243,7 +243,7 @@ function render(rows){
         </div>
 
         <!-- ✅ FIX: NaN → 0 -->
-        <div class="percent">${(pJ || 0).toFixed(1)}%</div>
+        <div class="percent">${(pJ || 0).toFixed(2)}%</div>
         <div class="votes">${formatInt(jara.votes)} votos</div>
       </div>
     ` : ""}
@@ -255,8 +255,8 @@ function render(rows){
       </div>
 
       <div class="shared-percents">
-        <span>${jara ? `${jara.candidate}: ${sharedJ.toFixed(1)}%` : ""}</span>
-        <span>${kast ? `${sharedK.toFixed(1)}% : ${kast.candidate}` : ""}</span>
+        <span>${jara ? `${jara.candidate}: ${sharedJ.toFixed(2)}%` : ""}</span>
+        <span>${kast ? `${sharedK.toFixed(2)}% : ${kast.candidate}` : ""}</span>
       </div>
 
       <div class="shared-label">
